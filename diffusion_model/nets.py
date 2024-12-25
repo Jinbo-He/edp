@@ -21,12 +21,12 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 
-from diffusion.diffusion import (
+from diffusion_model.diffusion import (
   GaussianDiffusion,
   ModelMeanType,
   _extract_into_tensor,
 )
-from diffusion.dpm_solver import DPM_Solver, NoiseScheduleVP
+from diffusion_model.dpm_solver import DPM_Solver, NoiseScheduleVP
 from utilities.jax_utils import extend_and_repeat
 
 

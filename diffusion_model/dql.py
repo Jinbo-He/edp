@@ -24,7 +24,7 @@ from flax.training.train_state import TrainState
 from ml_collections import ConfigDict
 
 from core.core_api import Algo
-from diffusion.diffusion import GaussianDiffusion
+from diffusion_model.diffusion import GaussianDiffusion
 from utilities.jax_utils import (
   extend_and_repeat,
   mse_loss,
@@ -34,9 +34,9 @@ from utilities.jax_utils import (
 
 
 def update_target_network(main_params, target_params, tau):
-  return jax.tree_multimap(
-    lambda x, y: tau * x + (1.0 - tau) * y, main_params, target_params
-  )
+    return jax.tree_util.tree_map(
+        lambda x, y: tau * x + (1.0 - tau) * y, main_params, target_params
+    )
 
 
 class DiffusionQL(Algo):

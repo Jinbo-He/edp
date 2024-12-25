@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
+
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from collections import deque
 from functools import partial
 from pathlib import Path
@@ -26,7 +28,7 @@ import numpy as np
 import tqdm
 
 from data import Dataset, DM2Gym, RandSampler, RLUPDataset
-from diffusion.constants import (
+from diffusion_model.constants import (
   DATASET,
   DATASET_ABBR_MAP,
   DATASET_MAP,
@@ -34,15 +36,15 @@ from diffusion.constants import (
   ENV_MAP,
   ENVNAME_MAP,
 )
-from diffusion.diffusion import (
+from diffusion_model.diffusion import (
   GaussianDiffusion,
   LossType,
   ModelMeanType,
   ModelVarType,
 )
-from diffusion.dql import DiffusionQL
-from diffusion.hps import hyperparameters
-from diffusion.nets import Critic, DiffusionPolicy, GaussianPolicy, Value
+from diffusion_model.dql import DiffusionQL
+from diffusion_model.hps import hyperparameters
+from diffusion_model.nets import Critic, DiffusionPolicy, GaussianPolicy, Value
 from utilities.jax_utils import batch_to_jax, next_rng
 from utilities.replay_buffer import get_d4rl_dataset
 from utilities.sampler import TrajSampler

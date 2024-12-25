@@ -70,7 +70,7 @@ class WandBLogger(object):
     config.online = False
     config.prefix = ""
     config.project = "OfflineRL"
-    config.output_dir = "/tmp/diffusion_rl"
+    config.output_dir = "results/"
     config.random_delay = 0.0
     config.experiment_id = config_dict.placeholder(str)
     config.anonymous = config_dict.placeholder(str)
@@ -111,7 +111,8 @@ class WandBLogger(object):
       entity=self.config.team,
       reinit=True,
       config=self._variant,
-      project=self.config.project,
+      # project='self.config.project',
+      project='edp',
       dir=self.config.output_dir,
       id=self.config.experiment_id,
       anonymous=self.config.anonymous,
