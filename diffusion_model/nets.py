@@ -91,7 +91,8 @@ class PolicyNet(nn.Module):
   time_embed_size: int = 16
   act: callable = mish
   use_layer_norm: bool = False
-
+  
+  # this is forward fn
   @nn.compact
   def __call__(self, state, action, t):
     time_embed = TimeEmbedding(self.time_embed_size, self.act)(t)
@@ -104,6 +105,7 @@ class PolicyNet(nn.Module):
       x = self.act(x)
 
     x = nn.Dense(self.output_dim)(x)
+    # finally output x = noise
     return x
 
 

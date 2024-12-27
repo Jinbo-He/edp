@@ -328,23 +328,28 @@ class GaussianDiffusion:
         return x.clip(self.min_value, self.max_value)
       return x
 
+    # 1. PREVIOUS_X模式
     if self.model_mean_type == ModelMeanType.PREVIOUS_X:
-      pred_xstart = process_xstart(
-        self._predict_xstart_from_xprev(x_t=x, t=t, xprev=model_output)
-      )
-      model_mean = model_output
-    elif self.model_mean_type in [
-      ModelMeanType.START_X, ModelMeanType.EPSILON
-    ]:
-      if self.model_mean_type == ModelMeanType.START_X:
-        pred_xstart = process_xstart(model_output)
-      else:
+        # 从x_{t-1}预测x_0
         pred_xstart = process_xstart(
-          self._predict_xstart_from_eps(x_t=x, t=t, eps=model_output)
+            self._predict_xstart_from_xprev(x_t=x, t=t, xprev=model_output)
         )
-      model_mean, _, _ = self.q_posterior_mean_variance(
-        x_start=pred_xstart, x_t=x, t=t
-      )
+        model_mean = model_output
+    
+    # 2. START_X或EPSILON模式
+    elif self.model_mean_type in [ModelMeanType.START_X, ModelMeanType.EPSILON]:
+        if self.model_mean_type == ModelMeanType.START_X:
+            # 直接使用模型输出作为x_0
+            pred_xstart = process_xstart(model_output)
+        else:
+            # 从噪声预测x_0
+            pred_xstart = process_xstart(
+                self._predict_xstart_from_eps(x_t=x, t=t, eps=model_output)
+            )
+        # 计算q(x_{t-1}|x_t,x_0)的均值
+        model_mean, _, _ = self.q_posterior_mean_variance(
+            x_start=pred_xstart, x_t=x, t=t
+        )
     else:
       raise NotImplementedError(self.model_mean_type)
 
@@ -680,8 +685,14 @@ class GaussianDiffusion:
     :return: a dict with the key "loss" containing a tensor of shape [N].
              Some mean or variance settings may also have other keys.
     """
+    # rng_key is jax random key
     noise = jax.random.normal(rng_key, x_start.shape, dtype=x_start.dtype)
+    
+    # q_sample implement q(x_t | x_0) and return x_t
+    # x_t is the noisy version of x_start
     x_t = self.q_sample(x_start, t, noise=noise)
+    
+    # this is output predict noise 
     model_output = model_forward(x_t, self._scale_timesteps(t))
 
     terms = {"model_output": model_output, "x_t": x_t}
@@ -714,7 +725,8 @@ class GaussianDiffusion:
           # Divide by 1000 for equivalence with initial implementation.
           # Without a factor of 1/1000, the VB term hurts the MSE term.
           terms["vb"] *= self.num_timesteps / 1000.0
-
+      # this implement different prediction for mean, x_start or noise 
+      # default is noise 
       target = {
         ModelMeanType.PREVIOUS_X:
           self.q_posterior_mean_variance(x_start=x_start, x_t=x_t, t=t)[0],
@@ -723,7 +735,9 @@ class GaussianDiffusion:
         ModelMeanType.EPSILON:
           noise,
       }[self.model_mean_type]
+      
       assert model_output.shape == target.shape == x_start.shape
+      # this is mse loss for prediction and ground_truth
       terms["mse"] = mean_flat((target - model_output)**2)
       # terms["mse"] = (target - model_output)**2
       if "vb" in terms:
@@ -736,7 +750,10 @@ class GaussianDiffusion:
     return terms
 
   def training_losses_(self, rng_key, model_forward, x_start, t):
+    # sample form gaussian distribution
     noise = jax.random.normal(rng_key, x_start.shape, dtype=x_start.dtype)
+    
+    # give a t, sample x_t from q(x_t | x_0)
     x_t = self.q_sample(x_start, t, noise=noise)
 
     model_output = model_forward(x_t, self._scale_timesteps(t))

@@ -241,10 +241,16 @@ class DiffusionQL(Algo):
 
   def get_diff_terms(self, params, observations, actions, dones, rng):
     rng, split_rng = jax.random.split(rng)
+    # select t_step randomly
     ts = jax.random.randint(
       split_rng, dones.shape, minval=0, maxval=self.diffusion.num_timesteps
     )
+    
     rng, split_rng = jax.random.split(rng)
+    
+    # compute diffuse loss
+    # this is 'jax' forward 
+    # GaussianDiffusion.forward  fn :training_losses
     terms = self.policy.apply(
       params["policy"],
       split_rng,
@@ -253,10 +259,15 @@ class DiffusionQL(Algo):
       ts,
       method=self.policy.loss,
     )
+    
+    # 使用扩散过程反向预测
+    # predict noise = model_output
     if self.config.use_pred_astart:
       pred_astart = self.diffusion.p_mean_variance(
         terms["model_output"], terms["x_t"], ts
       )["pred_xstart"]
+    
+    # 直接使用策略网络预测
     else:
       rng, split_rng = jax.random.split(rng)
       pred_astart = self.policy.apply(
@@ -264,8 +275,10 @@ class DiffusionQL(Algo):
       )
     terms["pred_astart"] = pred_astart
 
+    # 计算动作分布
     action_dist = self.policy_dist.apply(params['policy_dist'], pred_astart)
     sample = pred_astart
+    
     if self.config.sample_logp:
       rng, split_rng = jax.random.split(rng)
       sample = action_dist.sample(seed=split_rng)
@@ -273,6 +286,7 @@ class DiffusionQL(Algo):
       action_dist = distrax.MultivariateNormalDiag(
         pred_astart, jnp.ones_like(pred_astart)
       )
+    
     log_prob = action_dist.log_prob(sample)
     terms['sample'] = sample
     terms['action_dist'] = action_dist
@@ -306,6 +320,7 @@ class DiffusionQL(Algo):
 
     return getattr(self, f"_train_step_{self.config.loss_type.lower()}"
                   )(train_states, tgt_params, rng, batch, policy_tgt_update)
+
 
   def _train_step_td3(
     self, train_states, tgt_params, rng, batch, policy_tgt_update=False
